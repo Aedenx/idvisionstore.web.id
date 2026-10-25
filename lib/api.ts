@@ -22,39 +22,22 @@ export const STORAGE_URL = process.env.NEXT_PUBLIC_STORAGE_URL || "/uploads";
 /**
  * Helper untuk mendapatkan URL lengkap gambar produk / kategori / banner
  */
+
 export function getImageUrl(
-  path: string | null | undefined,
-  defaultType: "products" | "categories" | "banners" = "products",
-): string {
-  if (!path) {
-    return "/images/placeholder.jpg";
+  path?: string,
+  folder: "banners" | "products" | "categories" | "uploads" = "products",
+) {
+  if (!path) return "/images/placeholder.jpg";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
+  const cleanPath = path.replace(/^\//, "");
+
+  // Jika path sudah memiliki folder di depannya (misal: "uploads/logo.png")
+  if (cleanPath.startsWith("uploads/")) {
+    return `/${cleanPath}`;
   }
 
-  // Jika di DB masih tersimpan URL lokal PHP/Unsplash/S3 eksternal, ambil hanya nama filenya
-  let cleanPath = path;
-  if (cleanPath.includes("/uploads/")) {
-    cleanPath = cleanPath.split("/uploads/").pop() || cleanPath;
-  }
-
-  // Jika berupa URL eksternal murni (seperti Unsplash/Cloudinary)
-  if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
-    return cleanPath;
-  }
-
-  // Bersihkan slash di awal
-  cleanPath = cleanPath.startsWith("/") ? cleanPath.slice(1) : cleanPath;
-
-  // Jika path sudah mencakup folder publik seperti 'products/', 'categories/', atau 'banners/'
-  if (
-    cleanPath.startsWith("products/") ||
-    cleanPath.startsWith("categories/") ||
-    cleanPath.startsWith("banners/")
-  ) {
-    return `/${cleanPath.startsWith("uploads/") ? cleanPath : `uploads/${cleanPath}`}`;
-  }
-
-  // Menambahkan folder default jika hanya nama file yang dikirim
-  return `${STORAGE_URL}/${defaultType}/${cleanPath}`;
+  return `/uploads/${folder}/${cleanPath}`;
 }
 
 /**
