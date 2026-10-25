@@ -30,13 +30,20 @@ export function getImageUrl(
   if (!path) return "/images/placeholder.jpg";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
 
+  // Bersihkan slash awal
   const cleanPath = path.replace(/^\//, "");
 
-  // Jika path sudah memiliki folder di depannya (misal: "uploads/logo.png")
+  // Jika path sudah lengkap dari folder uploads/
   if (cleanPath.startsWith("uploads/")) {
     return `/${cleanPath}`;
   }
 
+  // Jika path sudah memiliki folder kategori di dalamnya (misal: "products/file.jpg")
+  if (cleanPath.startsWith(`${folder}/`)) {
+    return `/uploads/${cleanPath}`;
+  }
+
+  // Path standar (misal: "file.jpg")
   return `/uploads/${folder}/${cleanPath}`;
 }
 
