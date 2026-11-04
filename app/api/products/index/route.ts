@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -48,14 +50,46 @@ export async function GET(request: Request) {
 
     const [rows]: any = await db.query(query, params);
 
+    // Ambil daftar file fisik yang ada di public/uploads/products jika berada di server lokal/build
+    let localFiles: string[] = [];
+    try {
+      const uploadDir = path.join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "products",
+      );
+      if (fs.existsSync(uploadDir)) {
+        localFiles = fs.readdirSync(uploadDir);
+      }
+    } catch (e) {
+      // Ignore jika di edge/serverless murni tanpa akses fs lokal
+    }
+
     const formatted = rows.map((p: any) => {
-      // Hilangkan "products/" atau "uploads/" jika sudah ada di dalam image_path database
       let cleanImage = p.image ? p.image.trim().replace(/^\/+/, "") : null;
       if (cleanImage) {
         if (cleanImage.startsWith("uploads/"))
           cleanImage = cleanImage.replace(/^uploads\//, "");
         if (cleanImage.startsWith("products/"))
           cleanImage = cleanImage.replace(/^products\//, "");
+      }
+
+      // Jika database null, coba cari file di folder lokal yang mengandung slug/sku produk
+      if (!cleanImage && p.slug && localFiles.length > 0) {
+        const found = localFiles.find((file) =>
+          file.toLowerCase().includes(p.slug.toLowerCase()),
+        );
+        if (found) {
+          cleanImage = found;
+        }
+      }
+
+      // Fallback terakhir jika tetap tidak ketemu, ambil file acak dari folder atau biarkan placeholder
+      if (!cleanImage && localFiles.length > 0) {
+        // Ambil berdasarkan urutan modulo id produk agar konsisten
+        const index = p.product_id % localFiles.length;
+        cleanImage = localFiles[index];
       }
 
       return {
@@ -70,7 +104,9 @@ export async function GET(request: Request) {
         discount_price: p.discount_price ? Number(p.discount_price) : null,
         category_name: p.category_name || "Unisex",
         category_slug: p.category_slug || "unisex",
-        image_url: cleanImage ? `/uploads/products/${cleanImage}` : null,
+        image_url: cleanImage
+          ? `/uploads/products/${cleanImage}`
+          : "/images/placeholder.jpg",
         total_stock: Number(p.total_stock || 0),
         is_featured: Boolean(p.is_featured),
       };
