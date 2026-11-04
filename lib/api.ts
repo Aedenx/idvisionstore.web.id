@@ -28,22 +28,41 @@ export function getImageUrl(
   folder: "banners" | "products" | "categories" | "uploads" = "products",
 ) {
   if (!path) return "/images/placeholder.jpg";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
 
-  // Bersihkan slash awal
-  const cleanPath = path.replace(/^\//, "");
-
-  // Jika path sudah lengkap dari folder uploads/
-  if (cleanPath.startsWith("uploads/")) {
-    return `/${cleanPath}`;
+  // Jika path berupa URL eksternal atau sudah absolut
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    // Jika URL mengandung localhost atau domain lama, ambil nama file terakhirnya saja
+    if (path.includes("localhost") || path.includes("backend")) {
+      const parts = path.split("/");
+      const fileName = parts[parts.length - 1];
+      return `/uploads/${folder}/${fileName}`;
+    }
+    return path;
   }
 
-  // Jika path sudah memiliki folder kategori di dalamnya (misal: "products/file.jpg")
+  // Bersihkan slash awal dan spasi
+  let cleanPath = path.trim().replace(/^\/+/, "");
+
+  // Jika path sudah mengandung string "uploads/" di depannya
+  if (cleanPath.startsWith("uploads/")) {
+    cleanPath = cleanPath.replace(/^uploads\/+/, "");
+  }
+
+  // Jika path sudah mengandung folder kategori (misal: "products/file.jpg" atau "banners/file.jpg")
   if (cleanPath.startsWith(`${folder}/`)) {
     return `/uploads/${cleanPath}`;
   }
 
-  // Path standar (misal: "file.jpg")
+  // Jika path dari folder lain, cek subfolder umumnya
+  if (
+    cleanPath.startsWith("banners/") ||
+    cleanPath.startsWith("products/") ||
+    cleanPath.startsWith("categories/")
+  ) {
+    return `/uploads/${cleanPath}`;
+  }
+
+  // Format standar: gabungkan dengan folder tujuan
   return `/uploads/${folder}/${cleanPath}`;
 }
 
