@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -65,24 +66,39 @@ export async function GET(request: Request) {
 
     const [rows]: any = await db.query(query, params);
 
-    const formattedProducts = rows.map((p: any) => ({
-      id: p.product_id,
-      product_id: p.product_id,
-      name: p.name,
-      slug: p.slug,
-      sku_base: p.sku_base,
-      description: p.description,
-      base_price: Number(p.base_price),
-      discount_percent: Number(p.discount_percent || 0),
-      discount_price: p.discount_price ? Number(p.discount_price) : null,
-      category_name: p.category_name || "Unisex",
-      category_slug: p.category_slug || "unisex",
-      image_url: p.image_path
-        ? `/uploads/products/${p.image_path}`
-        : "/images/placeholder.jpg",
-      total_stock: Number(p.total_stock || 0),
-      is_featured: Boolean(p.is_featured),
-    }));
+    const formattedProducts = rows.map((p: any) => {
+      let finalImageUrl = "/images/placeholder.jpg";
+
+      if (p.image_path) {
+        // Jika sudah berupa URL lengkap (Vercel Blob / Cloudinary), gunakan langsung
+        if (
+          p.image_path.startsWith("http://") ||
+          p.image_path.startsWith("https://")
+        ) {
+          finalImageUrl = p.image_path;
+        } else {
+          // Fallback untuk file lokal lama
+          finalImageUrl = `/uploads/products/${p.image_path}`;
+        }
+      }
+
+      return {
+        id: p.product_id,
+        product_id: p.product_id,
+        name: p.name,
+        slug: p.slug,
+        sku_base: p.sku_base,
+        description: p.description,
+        base_price: Number(p.base_price),
+        discount_percent: Number(p.discount_percent || 0),
+        discount_price: p.discount_price ? Number(p.discount_price) : null,
+        category_name: p.category_name || "Unisex",
+        category_slug: p.category_slug || "unisex",
+        image_url: finalImageUrl,
+        total_stock: Number(p.total_stock || 0),
+        is_featured: Boolean(p.is_featured),
+      };
+    });
 
     return NextResponse.json({
       success: true,
